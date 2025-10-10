@@ -5,28 +5,52 @@ from langchain_community.vectorstores import FAISS
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.runnables import RunnableParallel, RunnableLambda
 from langchain.prompts import ChatPromptTemplate
+from contact_info import get_district_contact
+
 
 # ⭐ .env 파일 로드
 load_dotenv()
 
 # --- 프롬프트 템플릿 정의 ---
 SYSTEM_TEMPLATE = """
-당신은 전세사기 피해자 지원센터의 상담원입니다. 
-사용자에게 공감하고, 침착하며, 지원 정보를 명확하게 제공해야 합니다.
+당신은 전세사기 피해자 지원센터의 친절한 상담원입니다.
 
-1. 사용자의 상황과 질문에 가장 적합한 정보를 <context>에서 검색합니다.
-2. 답변은 반드시 다음 4가지 섹션을 H2 마크다운 헤딩으로 구분하여 제공해야 합니다.
-   - ## 1. 사용자 상황 판단 및 지원 등급
-   - ## 2. 지원 가능한 혜택 목록
-   - ## 3. 신청 조건 및 제출 서류
-   - ## 4. 관할 자치구 연락처
-3. 지원 혜택 목록은 <context>의 정보를 활용하여 디딤돌 금리, 대출 한도 등 구체적인 수치를 반드시 포함해야 합니다.
-4. 사용자가 '죽고싶다', '포기' 등 위기 키워드를 사용하면, 다른 모든 정보보다 1393 자살 예방 상담 전화 번호를 최우선으로 안내해야 합니다.
+## 답변 형식 (3개 섹션만)
+
+### 🎯 1. 고객님의 상황
+- 진단 결과를 1-2문장으로 간단히 설명
+- 받으실 수 있는 지원 등급 명시
+
+### 💰 2. 받으실 수 있는 지원
+**구체적인 금액, 금리, 한도를 <context>에서 찾아 반드시 포함**:
+
+#### 🏠 주거 지원
+- 긴급 주거비, 공공임대주택 등 (금액 명시)
+
+#### 💳 금융 지원
+- 대출 상품별 금리, 한도 명시
+- 예: 디딤돌 대출 연 1.85~2.70%, 최대 3억원
+
+#### 📋 기타 지원
+- 생계비, 법률지원 등
+
+### 📝 3. 신청 방법 및 서류
+
+**단계별로 설명**:
+1️⃣ 필요한 서류 (체크리스트 형식)
+2️⃣ 신청 절차 (간단히 3단계 이내)
+
+## 말투 규칙
+- 짧고 명확한 문장 (한 문장 2줄 이내)
+- 따뜻한 존댓말
+- 이모지로 가독성 향상
+- 번호와 체크박스로 구조화
 
 <context>
 {context}
 </context>
 """
+
 
 RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("system", SYSTEM_TEMPLATE),
@@ -96,13 +120,17 @@ def create_rag_chain():
 
 
 # ⭐ AI 담당 2에서 호출할 수 있도록 함수로 분리
-def get_rag_response(user_situation: str, user_query: str) -> str:
+from contact_info import get_district_contact
+from useful_links import get_related_links
+
+def get_rag_response(user_situation: str, user_query: str, district: str = None) -> str:
     """
     AI 담당 2에서 호출할 수 있는 인터페이스 함수
     
     Args:
-        user_situation: AI 담당 2가 판별한 상황 (예: "피해자 결정 (모든 지원 가능)")
+        user_situation: AI 담당 2가 판별한 상황
         user_query: 사용자의 질문
+        district: 사용자의 거주 자치구 (선택사항)
     
     Returns:
         AI 담당 1의 답변 (문자열)
@@ -117,9 +145,26 @@ def get_rag_response(user_situation: str, user_query: str) -> str:
             "user_situation": user_situation,
             "user_query": user_query
         })
-        return response.content
+        
+        # 기본 답변
+        answer = response.content
+        
+        # ⭐ 관련 링크 추가
+        related_links = get_related_links(user_query)
+        if related_links:
+            answer += related_links
+        
+        # 자치구 정보가 있으면 연락처 추가
+        if district:
+            contact_info = get_district_contact(district)
+            answer += "\n" + "="*70 + "\n"
+            answer += contact_info
+        
+        return answer
+        
     except Exception as e:
         return f"❌ 오류 발생: {e}"
+
 
 
 # ----------------------------------------------------
