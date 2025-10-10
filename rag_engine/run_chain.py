@@ -33,17 +33,18 @@ RAG_PROMPT = ChatPromptTemplate.from_messages([
     ("human", "사용자 상황: {user_situation}\n\n질문: {user_query}"),
 ])
 
-# --- 환경 및 경로 설정 ---
-DB_PATH = "index"
+# 현재 파일의 디렉토리 기준으로 경로 설정
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(CURRENT_DIR, "index")
 DB_NAME = "jeonse_vector_index"
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2"
 
 # ⭐ 환경변수에서 API 키 로드
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 
-# API 키 검증
 if not GOOGLE_API_KEY:
     raise ValueError("❌ GOOGLE_API_KEY가 설정되지 않았습니다. .env 파일을 확인하세요.")
+
 
 # ----------------------------------------------------
 # RAG 체인 구성 함수
@@ -52,7 +53,6 @@ if not GOOGLE_API_KEY:
 def create_rag_chain():
     """커스텀 RAG 체인 객체를 생성하여 반환합니다."""
     
-    # 1. FAISS DB 로드 및 검색기 연결
     print("  -> 임베딩 모델 로드 중...")
     embeddings = HuggingFaceEmbeddings(model_name=MODEL_NAME)
     
@@ -66,7 +66,6 @@ def create_rag_chain():
     
     retriever = vectorstore.as_retriever(search_kwargs={"k": 5})
 
-    # 2. Google Gemini LLM 로드
     print("  -> Google Gemini API 연결 중...")
     llm = ChatGoogleGenerativeAI(
         model="models/gemini-2.5-flash",
@@ -74,12 +73,10 @@ def create_rag_chain():
         google_api_key=GOOGLE_API_KEY
     )
     
-    # 3. 문서 포맷팅 함수
     def format_docs(docs):
         """검색된 문서들을 하나의 문자열로 결합합니다."""
         return "\n\n".join(doc.page_content for doc in docs)
     
-    # 4. 커스텀 RAG 체인 구성
     rag_chain = (
         RunnableParallel({
             "context": RunnableLambda(
@@ -97,48 +94,65 @@ def create_rag_chain():
     print("  -> RAG 체인 생성 완료")
     return rag_chain
 
+
+# ⭐ AI 담당 2에서 호출할 수 있도록 함수로 분리
+def get_rag_response(user_situation: str, user_query: str) -> str:
+    """
+    AI 담당 2에서 호출할 수 있는 인터페이스 함수
+    
+    Args:
+        user_situation: AI 담당 2가 판별한 상황 (예: "피해자 결정 (모든 지원 가능)")
+        user_query: 사용자의 질문
+    
+    Returns:
+        AI 담당 1의 답변 (문자열)
+    """
+    if not os.path.exists(f"{DB_PATH}/{DB_NAME}.faiss"):
+        return "🚨 오류: 벡터 DB 파일이 없습니다."
+    
+    rag_chain = create_rag_chain()
+    
+    try:
+        response = rag_chain.invoke({
+            "user_situation": user_situation,
+            "user_query": user_query
+        })
+        return response.content
+    except Exception as e:
+        return f"❌ 오류 발생: {e}"
+
+
 # ----------------------------------------------------
-# 메인 실행 함수
+# 메인 실행 함수 (테스트용)
 # ----------------------------------------------------
 
 if __name__ == "__main__":
     
     if not os.path.exists(f"{DB_PATH}/{DB_NAME}.faiss"):
-        print("🚨 오류: 벡터 DB 파일이 없습니다. 먼저 'create_db.py'를 실행해주세요.")
+        print("🚨 오류: 벡터 DB 파일이 없습니다.")
     else:
         print("\n" + "="*60)
         print("🚀 RAG 체인 로드 및 테스트 시작")
         print("💡 사용 모델: Google Gemini 2.5 Flash (API)")
         print("="*60 + "\n")
         
-        # 1. RAG 체인 생성
-        rag_chain = create_rag_chain()
-        
-        # 2. 테스트 입력
+        # 테스트 입력
         test_input = {
-            "user_situation": "4가지 요건 모두 충족함. 거주하던 집이 경매 통지서를 받았고, 저는 계속 살고 싶습니다. 저는 종로구에 거주하고 있습니다.",
+            "user_situation": "피해자 결정 (모든 지원 가능). 경매 진행 중. 종로구 거주.",
             "user_query": "지금 당장 해야 할 3가지 조치와 경매로 집을 뺏기지 않고 계속 살 방법이 궁금합니다."
         }
         
-        # 3. 체인 실행
         print("\n💬 Google Gemini API를 호출하여 답변을 생성 중입니다...\n")
         
-        try:
-            response = rag_chain.invoke(test_input)
-            
-            print("\n" + "="*60)
-            print(f"📝 테스트 질문: {test_input['user_query']}")
-            print("="*60 + "\n")
-            print(response.content)
-            print("\n" + "="*60)
-            print("✅ 답변 생성 완료!")
-            print("="*60 + "\n")
-            
-        except Exception as e:
-            print(f"\n❌ RAG 체인 실행 중 오류 발생: {e}")
-            import traceback
-            traceback.print_exc()
-            print("\n🚨 오류 해결 방법:")
-            print("  1. GOOGLE_API_KEY가 .env 파일에 올바르게 입력되었는지 확인")
-            print("  2. .env 파일이 run_chain.py와 같은 폴더에 있는지 확인")
-            print("  3. pip install python-dotenv 실행")
+        response = get_rag_response(
+            test_input["user_situation"], 
+            test_input["user_query"]
+        )
+        
+        print("\n" + "="*60)
+        print(f"📝 테스트 질문: {test_input['user_query']}")
+        print("="*60 + "\n")
+        print(response)
+        print("\n" + "="*60)
+        print("✅ 답변 생성 완료!")
+        print("="*60 + "\n")
