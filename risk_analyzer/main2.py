@@ -4,8 +4,14 @@ import os
 
 sys.path.append(os.path.dirname(__file__))
 
-from seoul_api_client import search_similar_property
-from risk_calculator import calculate_risk_score
+try:
+    # API에서 호출될 때 (패키지로 사용)
+    from .seoul_api_client import search_similar_property
+    from .risk_calculator import calculate_risk_score
+except ImportError:
+    # CLI에서 직접 실행될 때
+    from seoul_api_client import search_similar_property
+    from risk_calculator import calculate_risk_score
 
 
 def run_risk_analysis():

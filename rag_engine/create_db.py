@@ -8,8 +8,10 @@ from langchain_core.documents import Document
 
 
 # --- 환경 및 경로 설정 ---
-KB_PATH = "knowledge_base"
-DB_PATH = "index"
+# 현재 파일의 디렉토리 기준으로 경로 설정 (run_chain.py와 동일)
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+KB_PATH = os.path.join(CURRENT_DIR, "knowledge_base")
+DB_PATH = os.path.join(CURRENT_DIR, "index")
 DB_NAME = "jeonse_vector_index"
 MODEL_NAME = "sentence-transformers/all-MiniLM-L6-v2" 
 

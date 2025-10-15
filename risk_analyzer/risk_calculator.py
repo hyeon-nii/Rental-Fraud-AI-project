@@ -1,6 +1,12 @@
 # risk_analyzer/risk_calculator.py
 from typing import Dict
-from dummy_data import get_lien_data, get_nearby_fraud_cases
+
+try:
+    # API에서 호출될 때 (패키지로 사용)
+    from .dummy_data import get_lien_data, get_nearby_fraud_cases
+except ImportError:
+    # CLI에서 직접 실행될 때
+    from dummy_data import get_lien_data, get_nearby_fraud_cases
 
 
 def calculate_risk_score(
