@@ -57,25 +57,28 @@
 
 ## 📂 폴더 구조
 ```bash
+.
 ├── ai_modules/
-│   ├── classifier/
-│   │   ├── classifier_logic.py (이전 메인 파이프라인)
-│   │   ├── system_prompt.txt
-│   │   └── ... (프롬프트 유틸)
-│   ├── rag_engine/
-│   │   ├── run_chain.py (RAG 실행 및 LLM 호출)
-│   │   ├── create_db.py (벡터 DB 구축)
-│   │   ├── contact_info.py (자치구 연락처 DB)
-│   │   ├── useful_links.py (키워드별 링크 DB)
-│   │   └── ... (프롬프트 정의, 모델 체크)
-│   └── risk_analyzer/
-│       ├── main2.py (CLI 실행 파일)
-│       ├── seoul_api_client.py (서울시 API 연동)
-│       ├── risk_calculator.py (논문 기반 점수 산출)
-│       └── ... (더미 데이터, __init__.py)
-├── main.py .......................... (통합 실행: 진단 + RAG 대화 루프)
-├── test_cli.py ...................... (대화 이력 관리 기능이 강화된 테스트 콘솔)
-├── .gitignore ....................... (제외 파일 목록)
-└── __init__.py ...................... (모듈 외부 노출 설정)
+│   ├── classifier/
+│   │   ├── classifier_logic.py ... (상담 흐름 제어 및 지원 요건 진단 로직)
+│   │   ├── system_prompt.txt ....... (AI 상담원 역할 정의)
+│   │   └── ... (프롬프트 유틸)
+│   ├── rag_engine/
+│   │   ├── knowledge_base/ ....... **[원천 지식 자료]** 전세사기 법규, 지원대책 등 원본 문서 저장소 (PDF, MD 파일)
+│   │   ├── index/ ................ **[벡터 인덱스]** knowledge_base를 벡터화한 FAISS DB 파일 저장소 (**.faiss, .pkl**)
+│   │   ├── create_db.py .......... (지식 문서를 벡터화하고 DB를 구축하는 스크립트)
+│   │   ├── run_chain.py .......... (RAG 체인 실행, LLM 호출 및 답변 후처리)
+│   │   ├── contact_info.py ....... (자치구 및 전국 통합 연락처 데이터베이스)
+│   │   ├── useful_links.py ....... (질문 키워드 기반 관련 웹 링크 데이터베이스)
+│   │   └── ... (프롬프트 정의, 모델 체크)
+│   └── risk_analyzer/
+│       ├── main2.py .............. (CLI 기반 위험도 분석 실행)
+│       ├── seoul_api_client.py ... (서울시 부동산 실거래가 API 연동 로직)
+│       ├── risk_calculator.py .... (논문 기반 가중치 합산 위험 점수 산출)
+│       └── ... (더미 데이터, __init__.py)
+├── main.py ...................... (AI 모듈을 통합하여 실행하는 메인 엔트리 포인트)
+├── test_cli.py .................. (대화 이력 기반 RAG 테스트 및 디버깅 콘솔)
+├── .gitignore ................... (API 키, 캐시, 벡터 DB 등 Git 추적 제외 목록)
+└── __init__.py .................. (AI 모듈의 외부 노출 함수 정의)
 ``` 
 <br>
